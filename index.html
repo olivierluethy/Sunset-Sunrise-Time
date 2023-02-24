@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Sunrise and Sunset Times</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+  </head>
+  <body>
+    <h1>Sunrise and Sunset Times</h1>
+    <div id="input-container">
+      <input type="text" id="location-input" placeholder="Enter a location">
+      <button id="submit-btn">Submit</button>
+    </div>
+    <div id="output-container">
+        <div class="sunriset">
+            <img id="sunrise-image" src="" alt="">
+            <p id="sunrise-output"></p>
+        </div>
+        <div class="sunriset">
+            <img id="sunset-image" src="" alt="">
+      <p id="sunset-output"></p>
+        </div>
+
+        <h1 id="dataNotAvailable"></h1>
+    </div>
+    <script src="apikey.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
