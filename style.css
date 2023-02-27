@@ -39,12 +39,13 @@ body {
 #output-container {
   margin-top: 50px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
 }
 
 .sunriset img {
-  width: 60%;
+  width: 90%;
 }
 
 #sunrise-output, #sunset-output {
