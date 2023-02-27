@@ -1,1 +1,2 @@
 # Sunset-Sunrise-Time
+This is a JavaScript program that fetches weather data from the OpenWeatherMap API based on the location input by the user and displays the sunrise and sunset times for that location in the local time zone. It also displays the current date along with the icons for sunrise and sunset. If the API does not return valid data, it displays an error message instead. The program uses event listeners to detect button clicks and updates the HTML output accordingly.
