@@ -5,6 +5,7 @@ const sunriseOutput = document.querySelector('#sunrise-output');
 const sunsetOutput = document.querySelector('#sunset-output');
 const sunriseTitle = document.getElementById("sunrise-title");
 const sunsetTitle = document.getElementById("sunset-title");
+const sunrisetElements = document.querySelectorAll(".sunriset");
 
 // Add event listener for button click
 submitBtn.addEventListener('click', async function() {
@@ -29,6 +30,11 @@ submitBtn.addEventListener('click', async function() {
             timeZone: 'Europe/London'
         };
 
+        sunrisetElements.forEach(element => {
+            element.style.display = "flex";
+        });
+
+
         // Convert the Unix timestamps for sunrise and sunset to local time and format as a string using the specified options
         const sunrise = new Date(data.sys.sunrise * 1000).toLocaleTimeString('en-US', options);
         const sunset = new Date(data.sys.sunset * 1000).toLocaleTimeString('en-US', options);
@@ -40,15 +46,18 @@ submitBtn.addEventListener('click', async function() {
         sunsetTitle.innerHTML = "Sunset";
 
         // Update the HTML output with the sunrise and sunset times and current date
-        sunriseOutput.innerHTML = `<img src="images/sunrise icon.png" alt="Sunrise icon"><br>Time: <strong>${sunrise}</strong><br>Date: ${currentDate}`;
-        sunsetOutput.innerHTML = `<img src="images/sunset icon.png" alt="Sunset icon"><br>Time: <strong>${sunset}</strong><br>Date: ${currentDate}`;
+        sunriseOutput.innerHTML = `<img src="images/sunrise icon.png" alt="Sunrise icon"><br>Time: <strong>${sunrise}</strong><br>Date: <strong>${currentDate}</strong>`;
+        sunsetOutput.innerHTML = `<img src="images/sunset icon.png" alt="Sunset icon"><br>Time: <strong>${sunset}</strong><br>Date: <strong>${currentDate}</strong>`;
     } else {
         // If the API did not return valid data, update the HTML output with an error message
         sunriseOutput.innerHTML = "";
         sunsetOutput.innerHTML = "";
         sunriseTitle.innerHTML = "";
         sunsetTitle.innerHTML = "";
-        document.getElementById("dataNotAvailable").innerHTML = "No data available";
-        console.log("No data available");
+        sunrisetElements.forEach(element => {
+            element.style.display = "none";
+        });
+        document.getElementById("dataNotAvailable").innerHTML = "No data available<br><i>Please enter a valid location.</i>";
+        alert("No data available");
     }
 });

@@ -1,0 +1,80 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-image: url("https://wallpaperaccess.com/full/1939413.jpg");
+    h1 {
+        color: yellow;
+      }
+      #input-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 50px;
+        #location-input {
+            width: 50%;
+            height: 50px;
+            font-size: 20px;
+            padding: 10px;
+            border: 2px solid gray;
+            border-radius: 10px;
+            margin-right: 10px;
+          }
+          #submit-btn {
+            width: 150px;
+            height: 70px;
+            font-size: 20px;
+            background-color: lightblue;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease-in-out;
+            &:hover{
+                background-color: #1e90ff;
+    color: white;
+            }
+          }
+      }
+      #output-container {
+        margin-top: 50px;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        .sunriset {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            background-color: white;
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 50px;
+            padding: 20px;
+            width: 20%;
+            box-shadow: -1px 1px 53px 1px rgba(0,0,0,0.75);
+          -webkit-box-shadow: -1px 1px 53px 1px rgba(0,0,0,0.75);
+          -moz-box-shadow: -1px 1px 53px 1px rgba(0,0,0,0.75);
+          img {
+            width: 90%;
+            user-select: none;
+          }
+          #sunrise-output, #sunset-output {
+            font-size: 20px;
+            margin-top: 20px;
+          }
+          }
+          #dataNotAvailable {
+            color: yellow;
+            font-weight: bold;
+          }        
+      }
+  }
+  
+  
+  
+ 
+  
+
+  
+  
+ 
