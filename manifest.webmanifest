@@ -1,0 +1,16 @@
+{
+  "name": "Solaris — Sunrise & Sunset",
+  "short_name": "Solaris",
+  "description": "Keyless sunrise, sunset, twilight and golden-hour times with a live sky visualisation, for anywhere on Earth.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "categories": ["weather", "lifestyle", "travel", "utilities"],
+  "icons": [
+    { "src": "./icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "./icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
+  ]
+}

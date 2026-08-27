@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Solaris sunrise mark">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3a67"/>
+      <stop offset="0.55" stop-color="#8a4b9c"/>
+      <stop offset="1" stop-color="#ff8a3d"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe29a"/>
+      <stop offset="1" stop-color="#ff9d2f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#sky)"/>
+  <circle cx="256" cy="300" r="96" fill="url(#sun)"/>
+  <g stroke="#ffe29a" stroke-width="16" stroke-linecap="round">
+    <line x1="256" y1="150" x2="256" y2="110"/>
+    <line x1="360" y1="196" x2="388" y2="168"/>
+    <line x1="152" y1="196" x2="124" y2="168"/>
+    <line x1="410" y1="300" x2="450" y2="300"/>
+    <line x1="102" y1="300" x2="62" y2="300"/>
+  </g>
+  <rect x="0" y="300" width="512" height="212" fill="#1c2541" opacity="0.86"/>
+  <rect x="0" y="300" width="512" height="10" fill="#ffd27a" opacity="0.9"/>
+</svg>

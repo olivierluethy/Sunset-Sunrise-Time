@@ -1,13 +1,38 @@
-# Sunset-Sunrise-Time
-This is a JavaScript program that fetches weather data from the OpenWeatherMap API based on the location input by the user and displays the sunrise and sunset times for that location in the local time zone. It also displays the current date along with the icons for sunrise and sunset. If the API does not return valid data, it displays an error message instead. The program uses event listeners to detect button clicks and updates the HTML output accordingly.
+# Solaris — Sunrise &amp; Sunset
 
-## Setup
-To use this project, you'll need to create an account at [OpenWeather](https://openweathermap.org/), as the project pulls data from their API.
+A keyless, self-contained web app that shows the **sunrise, sunset, twilight and
+golden-hour** times for anywhere on Earth, with a live sky visualisation of the
+sun's position, countdowns to the next event, and a world-wide daylight
+comparison. It installs as a **Progressive Web App** and works offline.
 
-Once you've created an account, navigate to your profile by clicking on your name in the top navigation between <strong>For Business</strong> and <strong>Support</strong>. From there, click on <strong>My API Keys</strong>. If you don't have an API key, create one.
+No API key, no account, no build step.
 
-Next, create a new file in the project called <strong>apikey.js</strong>. In that file, write the following code and paste your API key:
-```javascript
-const apiKey = "YOUR_API_KEY";
+## Highlights
+
+- **Location** — type-ahead search (OpenStreetMap Nominatim) or one-tap "My location" (device GPS).
+- **On-device astronomy** — sunrise, sunset, solar noon, civil/nautical/astronomical twilight, golden &amp; blue hour, live solar altitude and bearing, all computed locally with [SunCalc](https://github.com/mourner/suncalc) — so the core works with **no API key** and **offline**.
+- **Live sky** — an animated scene puts the sun where it actually is right now, with an adaptive day → sunset → night → sunrise background.
+- **Countdowns** — a live timer to the next sunrise/sunset, plus daylight and night length, and how today compares with yesterday and the year's longest/shortest day.
+- **Compare the world** — see sunrise/sunset and the current day/golden/night status of several cities side by side.
+- **PWA** — installable, mobile-first, light &amp; dark modes.
+
+## Tech
+
+Single-page app built with **React** (via CDN + [htm](https://github.com/developit/htm), no build tooling) and **Tailwind CSS**. Astronomy and location logic are kept separate from the presentation layer. Just open `index.html` (or serve the folder) — there is nothing to compile.
+
+## Run locally
+
+Serve the folder with any static server, e.g.:
+
+```bash
+npx serve .
+# or
+python3 -m http.server
 ```
-Finally, save the file and you're ready to go!
+
+Then open the printed URL. Geolocation and service-worker install require `https://` or `localhost`.
+
+## Credits
+
+Sun calculations © Vladimir Agafonkin (SunCalc, BSD-2-Clause). Location data ©
+OpenStreetMap contributors via the Nominatim service.
