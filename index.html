@@ -278,6 +278,146 @@
 				}
 			}
 
+			/* ---------- travel + viewpoints (Planning, stories 33-42) -------- */
+			function haversineKm(aLat, aLng, bLat, bLng) {
+				const R = 6371,
+					dLat = (bLat - aLat) * (Math.PI / 180),
+					dLng = (bLng - aLng) * (Math.PI / 180),
+					s =
+						Math.sin(dLat / 2) ** 2 +
+						Math.cos(aLat * (Math.PI / 180)) *
+							Math.cos(bLat * (Math.PI / 180)) *
+							Math.sin(dLng / 2) ** 2;
+				return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+			}
+			function bearingDeg(aLat, aLng, bLat, bLng) {
+				const φ1 = aLat * (Math.PI / 180),
+					φ2 = bLat * (Math.PI / 180),
+					Δλ = (bLng - aLng) * (Math.PI / 180),
+					y = Math.sin(Δλ) * Math.cos(φ2),
+					x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+				return (Math.atan2(y, x) * DEG + 360) % 360;
+			}
+			const MODES = {
+				walk: { label: 'Walk', kmh: 5, factor: 1.15, icon: '🚶' },
+				cycle: { label: 'Cycle', kmh: 15, factor: 1.2, icon: '🚲' },
+				drive: { label: 'Drive', kmh: 50, factor: 1.35, icon: '🚗' }
+			};
+			// Distance-based travel estimate — keyless and offline. It is an estimate
+			// (straight-line × a road factor ÷ typical speed), not turn-by-turn routing.
+			function travelMs(km, modeKey) {
+				const m = MODES[modeKey] || MODES.drive;
+				return (km * m.factor) / m.kmh * 3600e3;
+			}
+			// Nearby viewing spots from OpenStreetMap via Overpass (keyless). Fails soft.
+			async function findViewpoints(lat, lng, radiusM = 25000) {
+				const q =
+					'[out:json][timeout:15];(' +
+					'node["tourism"="viewpoint"](around:' + radiusM + ',' + lat + ',' + lng + ');' +
+					'node["natural"="peak"](around:' + radiusM + ',' + lat + ',' + lng + ');' +
+					'node["man_made"="tower"]["tower:type"="observation"](around:' + radiusM + ',' + lat + ',' + lng + ');' +
+					');out center 40;';
+				try {
+					const res = await fetch('https://overpass-api.de/api/interpreter', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+						body: 'data=' + encodeURIComponent(q)
+					});
+					if (!res.ok) return [];
+					const data = await res.json();
+					const seen = new Set();
+					return (data.elements || [])
+						.map((el) => {
+							const la = el.lat ?? el.center?.lat,
+								lo = el.lon ?? el.center?.lon;
+							if (la == null) return null;
+							const t = el.tags || {};
+							const kind =
+								t.tourism === 'viewpoint' ? 'Viewpoint' : t.natural === 'peak' ? 'Peak' : 'Tower';
+							return {
+								name: t.name || kind,
+								kind,
+								lat: la,
+								lng: lo,
+								km: haversineKm(lat, lng, la, lo)
+							};
+						})
+						.filter((v) => {
+							if (!v) return false;
+							const key = v.lat.toFixed(3) + ',' + v.lng.toFixed(3);
+							if (seen.has(key)) return false;
+							seen.add(key);
+							return true;
+						})
+						.sort((a, b) => a.km - b.km)
+						.slice(0, 8);
+				} catch {
+					return [];
+				}
+			}
+			function directionsUrl(fromLat, fromLng, toLat, toLng) {
+				return (
+					'https://www.google.com/maps/dir/?api=1&origin=' +
+					fromLat + ',' + fromLng + '&destination=' + toLat + ',' + toLng
+				);
+			}
+
+			/* ---------- notifications (Alarms, stories 43-47) ---------------- */
+			// Client-only: on browsers with the Notification Triggers API these fire
+			// even when Solaris is closed; otherwise they fire while it is open. No push
+			// backend (which would need a server + VAPID keys) is required.
+			const _timers = {};
+			async function swReg() {
+				try {
+					return navigator.serviceWorker ? await navigator.serviceWorker.ready : null;
+				} catch {
+					return null;
+				}
+			}
+			async function ensureNotify() {
+				if (!('Notification' in window)) return false;
+				if (Notification.permission === 'granted') return true;
+				if (Notification.permission === 'denied') return false;
+				return (await Notification.requestPermission()) === 'granted';
+			}
+			function notifSupport() {
+				const triggers = 'Notification' in window && 'showTrigger' in Notification.prototype;
+				return { any: 'Notification' in window, triggers };
+			}
+			async function scheduleNotify({ tag, title, body, when }) {
+				const delay = when - Date.now();
+				if (delay <= 0) return 'past';
+				const reg = await swReg();
+				const opts = { body, tag, icon: 'icon.svg', badge: 'icon.svg', requireInteraction: true };
+				if (reg && 'showTrigger' in Notification.prototype && 'TimestampTrigger' in window) {
+					try {
+						await reg.showNotification(title, { ...opts, showTrigger: new TimestampTrigger(when) });
+						return 'scheduled';
+					} catch {}
+				}
+				clearTimeout(_timers[tag]);
+				_timers[tag] = setTimeout(async () => {
+					const r = await swReg();
+					if (r) r.showNotification(title, opts);
+					else if (Notification.permission === 'granted') new Notification(title, opts);
+				}, Math.min(delay, 2 ** 31 - 1));
+				return 'timer';
+			}
+			async function cancelNotify(tag) {
+				clearTimeout(_timers[tag]);
+				const reg = await swReg();
+				if (reg) {
+					try {
+						const ns = await reg.getNotifications({ tag, includeTriggered: true });
+						ns.forEach((n) => n.close());
+					} catch {
+						try {
+							(await reg.getNotifications({ tag })).forEach((n) => n.close());
+						} catch {}
+					}
+				}
+			}
+
 			/* ---------- derive everything for a place at "now" ---------------- */
 			function derive(place, now) {
 				const { lat, lng, isDeviceLocal } = place;
@@ -655,6 +795,222 @@
 				<//>`;
 			}
 
+			// Planning: when to leave, optimal window, ranked nearby viewpoints,
+			// directions, and reminders (stories 33-47).
+			function Planner({ origin, place, now, onSchedule }) {
+				const [evt, setEvt] = useState('sunset');
+				const [mode, setMode] = useState('drive');
+				const [dest, setDest] = useState(place);
+				const [vps, setVps] = useState(null);
+				const [loadingVps, setLoadingVps] = useState(false);
+				const support = notifSupport();
+
+				useEffect(() => {
+					setDest(place);
+					setVps(null);
+				}, [place && place.short, place && place.lat]);
+
+				const d = useMemo(
+					() => (dest ? derive({ ...dest, isDeviceLocal: false }, now) : null),
+					[dest, Math.floor(now.getTime() / 60000)]
+				);
+				const info = useMemo(() => {
+					if (!d || !dest) return null;
+					let at = evt === 'sunset' ? d.times.sunset : d.times.sunrise;
+					if (!isValid(at) || at < now) {
+						const t2 = SunCalc.getTimes(new Date(now.getTime() + 864e5), dest.lat, dest.lng);
+						at = evt === 'sunset' ? t2.sunset : t2.sunrise;
+					}
+					const sunAz = isValid(at)
+						? compass(SunCalc.getPosition(at, dest.lat, dest.lng).azimuth)
+						: null;
+					return { at, offsetH: d.offsetH, sunAz };
+				}, [d, evt, dest, now]);
+
+				const km = origin && dest ? haversineKm(origin.lat, origin.lng, dest.lat, dest.lng) : null;
+				const tMs = km != null ? travelMs(km, mode) : null;
+				const departBy = info && tMs != null ? new Date(info.at.getTime() - tMs - 6e5) : null;
+				const o = info ? info.offsetH : 0;
+
+				async function loadVps() {
+					if (!dest) return;
+					setLoadingVps(true);
+					setVps(await findViewpoints(dest.lat, dest.lng));
+					setLoadingVps(false);
+				}
+				async function remind(kind) {
+					if (!(await ensureNotify())) {
+						alert('Enable notifications to set reminders.');
+						return;
+					}
+					if (kind === 'leave' && departBy) {
+						onSchedule({
+							tag: 'leave-' + dest.short,
+							title: 'Time to leave for ' + dest.short,
+							body: 'Leave now to catch the ' + evt + ' (' + fmtTime(info.at, o) + ').',
+							when: departBy.getTime(),
+							label: 'Leave for ' + dest.short + ' · ' + fmtTime(departBy, o)
+						});
+					} else if (kind === 'alarm') {
+						onSchedule({
+							tag: 'alarm-' + dest.short + '-' + evt,
+							title: (evt === 'sunset' ? 'Sunset' : 'Sunrise') + ' in 15 min · ' + dest.short,
+							body: evt === 'sunset' ? 'Golden hour is ending soon.' : 'Get ready for first light.',
+							when: info.at.getTime() - 9e5,
+							label: '15 min before ' + evt + ' · ' + dest.short
+						});
+					}
+				}
+
+				const modeBtn = (k) =>
+					html`<button
+						key=${k}
+						onClick=${() => setMode(k)}
+						className=${'px-3 py-1.5 rounded-full text-sm ' +
+						(mode === k
+							? 'bg-amber-500 text-slate-900'
+							: 'bg-white/70 dark:bg-slate-800 ring-1 ring-black/10 dark:ring-white/10')}
+					>
+						${MODES[k].icon} ${MODES[k].label}
+					</button>`;
+
+				return html`<${Card} className="p-5">
+					<h3 className="font-semibold">Plan your ${evt}</h3>
+					<div className="mt-3 flex flex-wrap items-center gap-2">
+						<div className="inline-flex rounded-full ring-1 ring-black/10 dark:ring-white/10 overflow-hidden">
+							${['sunset', 'sunrise'].map(
+								(k) =>
+									html`<button
+										key=${k}
+										onClick=${() => setEvt(k)}
+										className=${'px-3 py-1.5 text-sm capitalize ' +
+										(evt === k ? 'bg-amber-500 text-slate-900' : 'bg-white/70 dark:bg-slate-800')}
+									>
+										${k}
+									</button>`
+							)}
+						</div>
+						${Object.keys(MODES).map(modeBtn)}
+					</div>
+
+					<div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+						<${Stat} label=${'Destination'} value=${dest ? dest.short : '—'} />
+						<${Stat}
+							label=${evt + ' there'}
+							value=${info ? fmtTime(info.at, o) : '—'}
+							sub=${info && info.sunAz ? 'Faces ' + info.sunAz.label : null}
+						/>
+						<${Stat}
+							label="Travel"
+							value=${km != null ? Math.round(km) + ' km · ' + durationStr(tMs) : 'Enable location'}
+						/>
+						<${Stat}
+							label="Leave by"
+							value=${departBy ? fmtTime(departBy, o) : '—'}
+							sub=${departBy ? 'arrive ~10 min early' : 'needs your location'}
+						/>
+					</div>
+
+					<div className="mt-4 flex flex-wrap gap-2">
+						<button
+							onClick=${() => remind('leave')}
+							disabled=${!departBy || departBy.getTime() < Date.now()}
+							className="px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-medium disabled:opacity-40"
+						>
+							⏰ Remind me to leave
+						</button>
+						<button
+							onClick=${() => remind('alarm')}
+							disabled=${!info}
+							className="px-3 py-2 rounded-lg bg-white/80 dark:bg-slate-800 ring-1 ring-black/10 dark:ring-white/10 text-sm disabled:opacity-40"
+						>
+							🔔 Alarm 15 min before ${evt}
+						</button>
+						<button
+							onClick=${loadVps}
+							className="px-3 py-2 rounded-lg bg-white/80 dark:bg-slate-800 ring-1 ring-black/10 dark:ring-white/10 text-sm"
+						>
+							${loadingVps ? 'Finding spots…' : '📍 Find viewing spots'}
+						</button>
+					</div>
+
+					${!support.any &&
+					html`<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+						Notifications are not supported on this browser.
+					</p>`}
+					${support.any &&
+					!support.triggers &&
+					html`<p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+						Reminders fire while Solaris is open; some browsers also fire them when closed.
+					</p>`}
+
+					${vps != null &&
+					html`<div className="mt-4 border-t border-black/10 dark:border-white/10 pt-3">
+						<div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+							Viewing spots near ${dest.short}${info && info.sunAz ? ' · face ' + info.sunAz.label : ''}
+						</div>
+						${vps.length === 0
+							? html`<p className="text-sm text-slate-500 dark:text-slate-400">
+									No mapped viewpoints found nearby.
+								</p>`
+							: html`<ul className="space-y-2">
+									${vps.map(
+										(v, i) => html`<li
+											key=${i}
+											className="flex items-center gap-3 text-sm"
+										>
+											<div className="flex-1 min-w-0">
+												<div className="font-medium truncate">${v.name}</div>
+												<div className="text-xs text-slate-500 dark:text-slate-400">
+													${v.kind} · ${v.km.toFixed(1)} km
+												</div>
+											</div>
+											<button
+												onClick=${() => {
+													setDest({ short: v.name, name: v.name, lat: v.lat, lng: v.lng });
+													setVps(null);
+												}}
+												className="text-xs px-2 py-1 rounded-md bg-white/80 dark:bg-slate-800 ring-1 ring-black/10 dark:ring-white/10"
+											>
+												Set as destination
+											</button>
+											<a
+												href=${origin
+													? directionsUrl(origin.lat, origin.lng, v.lat, v.lng)
+													: 'https://www.google.com/maps/search/?api=1&query=' + v.lat + ',' + v.lng}
+												target="_blank"
+												rel="noreferrer"
+												className="text-amber-600 dark:text-amber-400 hover:underline"
+												>Directions ↗</a
+											>
+										</li>`
+									)}
+								</ul>`}
+					</div>`}
+				<//>`;
+			}
+
+			function Reminders({ items, onCancel }) {
+				if (!items.length) return null;
+				return html`<${Card} className="p-5">
+					<h3 className="font-semibold">Reminders</h3>
+					<ul className="mt-3 space-y-2">
+						${items.map(
+							(r) => html`<li key=${r.id} className="flex items-center gap-3 text-sm">
+								<span className="flex-1 min-w-0 truncate">${r.label}</span>
+								<button
+									onClick=${() => onCancel(r.id)}
+									className="text-slate-400 hover:text-rose-500"
+									title="Cancel reminder"
+								>
+									✕
+								</button>
+							</li>`
+						)}
+					</ul>
+				<//>`;
+			}
+
 			function useNow() {
 				const [now, setNow] = useState(new Date());
 				useEffect(() => {
@@ -683,6 +1039,48 @@
 					}
 				});
 				const [installEvt, setInstallEvt] = useState(null);
+				const [deviceOrigin, setDeviceOrigin] = useState(() => {
+					try {
+						return JSON.parse(localStorage.getItem('solaris-origin') || 'null');
+					} catch {
+						return null;
+					}
+				});
+				const [reminders, setReminders] = useState(() => {
+					try {
+						return JSON.parse(localStorage.getItem('solaris-reminders') || '[]');
+					} catch {
+						return [];
+					}
+				});
+
+				useEffect(() => {
+					localStorage.setItem('solaris-reminders', JSON.stringify(reminders));
+				}, [reminders]);
+
+				// Re-arm still-future reminders after a reload and drop stale ones. (Trigger-
+				// based reminders persist in the service worker; timer-based need re-arming.)
+				useEffect(() => {
+					reminders.forEach((r) => {
+						if (r.when > Date.now()) scheduleNotify(r);
+					});
+					setReminders((rs) => rs.filter((r) => r.when > Date.now() - 36e5));
+					// eslint-disable-next-line
+				}, []);
+
+				const addReminder = useCallback(async (r) => {
+					const id = r.tag + '-' + r.when;
+					await scheduleNotify(r);
+					setReminders((rs) => [...rs.filter((x) => x.id !== id), { ...r, id }]);
+				}, []);
+				const cancelReminder = useCallback(
+					async (id) => {
+						const r = reminders.find((x) => x.id === id);
+						if (r) await cancelNotify(r.tag);
+						setReminders((rs) => rs.filter((x) => x.id !== id));
+					},
+					[reminders]
+				);
 
 				// dark-mode class + persistence
 				useEffect(() => {
@@ -742,8 +1140,11 @@
 							const { latitude, longitude } = pos.coords;
 							const p = await reverseGeocode(latitude, longitude);
 							const full = { ...p, isDeviceLocal: true };
+							const origin = { short: p.short, lat: p.lat, lng: p.lng };
 							setPlace(full);
+							setDeviceOrigin(origin);
 							localStorage.setItem('solaris-place', JSON.stringify(full));
+							localStorage.setItem('solaris-origin', JSON.stringify(origin));
 							setLocating(false);
 							setError('');
 						},
@@ -876,6 +1277,13 @@
 										onAdd=${(p) => setCompare((c) => [...c, { ...p, isDeviceLocal: false }])}
 										onRemove=${(i) => setCompare((c) => c.filter((_, j) => j !== i))}
 									/>
+									<${Planner}
+										origin=${deviceOrigin}
+										place=${place}
+										now=${now}
+										onSchedule=${addReminder}
+									/>
+									<${Reminders} items=${reminders} onCancel=${cancelReminder} />
 								</div>`}
 
 						<footer className="pt-2 pb-8 text-center text-xs text-white/70">

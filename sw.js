@@ -2,7 +2,7 @@
 // Astronomy is computed on-device (SunCalc), so once the shell + CDN libs are
 // cached the app works with no network and no API key. Geocoding still needs the
 // network but degrades gracefully to the last known location.
-const CACHE = 'solaris-v1';
+const CACHE = 'solaris-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -15,6 +15,17 @@ self.addEventListener('activate', (event) => {
 			.keys()
 			.then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
 			.then(() => self.clients.claim())
+	);
+});
+
+// Tapping a sunrise/sunset reminder focuses the app (opens it if closed).
+self.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+	event.waitUntil(
+		self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+			for (const c of list) if ('focus' in c) return c.focus();
+			if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+		})
 	);
 });
 
