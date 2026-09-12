@@ -1,4 +1,17 @@
-# Solaris — Sunrise &amp; Sunset
+<div align="center">
+  <img src="icon.svg" alt="Solaris logo" width="140" />
+  <h1>Solaris</h1>
+  <p><b>Sunrise, sunset, twilight and golden-hour times for anywhere on Earth.</b><br/>A keyless, offline-capable PWA with a live sky visualisation, countdowns, world-wide daylight comparison and trip planning — no API key, no account, no build step.</p>
+  <p>
+    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+    <img alt="React" src="https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black">
+    <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white">
+    <img alt="PWA" src="https://img.shields.io/badge/PWA-offline-5A0FC8?logo=pwa&logoColor=white">
+    <img alt="SunCalc" src="https://img.shields.io/badge/SunCalc-astronomy-F9A825">
+  </p>
+</div>
+
+---
 
 A keyless, self-contained web app that shows the **sunrise, sunset, twilight and
 golden-hour** times for anywhere on Earth, with a live sky visualisation of the
@@ -93,3 +106,13 @@ Single-page app built with **React** (via CDN + [htm](https://github.com/develop
 
 Sun calculations © Vladimir Agafonkin (SunCalc, BSD-2-Clause). Location and
 viewpoint data © OpenStreetMap contributors via the Nominatim and Overpass services.
+
+
+## License
+
+Released under the [MIT License](LICENSE) © 2026 Olivier Lüthy. You're free to use, modify and distribute this
+software, including commercially, as long as the copyright notice and license are included.
+
+## Author
+
+Built by **Olivier Lüthy** — [GitHub](https://github.com/olivierluethy).
